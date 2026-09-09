@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWSense — AI-Powered Weather Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<style>
+:root{
+  --bg:#070E16;
+  --bg-glow-1:#0B2A2A;
+  --bg-glow-2:#0A1A2E;
+  --panel:#0E1821;
+  --panel-soft:rgba(17,28,38,0.68);
+  --panel-2:#0B141C;
+  --line:rgba(148,180,201,0.14);
+  --line-strong:rgba(148,180,201,0.26);
+  --text:#E7F0F6;
+  --text-dim:#7E97A8;
+  --text-faint:#4E6273;
+  --cyan:#3FE0CB;
+  --cyan-2:#2BB8C4;
+  --amber:#EFA43D;
+  --red:#F1584D;
+  --green:#3ED28A;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'IBM Plex Sans',sans-serif;
+  --radius:14px;
+  --radius-sm:10px;
+  --shadow-lg:0 24px 60px -24px rgba(0,0,0,0.65);
+  --shadow-sm:0 8px 24px -12px rgba(0,0,0,0.5);
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(1100px 600px at -8% -12%, rgba(63,224,203,0.08), transparent 60%),
+    radial-gradient(900px 500px at 108% 0%, rgba(43,140,196,0.07), transparent 55%),
+    var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+a{color:inherit;}
+::selection{background:rgba(63,224,203,0.25);}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#1C2A34;border-radius:20px;}
+::-webkit-scrollbar-thumb:hover{background:#243642;}
+svg.lucide{width:16px;height:16px;stroke-width:1.8;flex:none;}
+
+/* ---------- Layout ---------- */
+.app{display:flex;min-height:100vh;}
+
+/* ---------- Sidebar ---------- */
+.rail{
+  width:236px;
+  flex:none;
+  background:linear-gradient(180deg, #0A131C 0%, #08111A 100%);
+  border-right:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  padding:22px 0 16px 0;
+  position:relative;
+  z-index:30;
+}
+.brand{
+  padding:0 22px 20px 22px;
+  border-bottom:1px solid var(--line);
+  margin-bottom:16px;
+  display:flex;
+  align-items:center;
+  gap:11px;
+}
+.brand-icon{
+  width:36px;height:36px;border-radius:10px;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(140deg, rgba(63,224,203,0.22), rgba(43,184,196,0.06));
+  border:1px solid rgba(63,224,203,0.35);
+  color:var(--cyan);
+  box-shadow:0 0 22px -6px rgba(63,224,203,0.45);
+}
+.brand-icon svg{width:19px;height:19px;}
+.brand-text{min-width:0;}
+.brand-mark{
+  font-family:var(--mono);
+  font-size:17.5px;
+  font-weight:600;
+  letter-spacing:0.01em;
+  color:var(--text);
+  line-height:1.2;
+}
+.brand-sub{
+  font-size:10.5px;
+  color:var(--text-dim);
+  margin-top:3px;
+  line-height:1.3;
+  letter-spacing:0.02em;
+}
+.nav{display:flex;flex-direction:column;gap:3px;padding:0 12px;}
+.nav button{
+  all:unset;
+  cursor:pointer;
+  padding:10px 13px;
+  border-radius:9px;
+  font-size:13px;
+  font-weight:500;
+  color:var(--text-dim);
+  display:flex;
+  align-items:center;
+  gap:11px;
+  position:relative;
+  transition:background .15s ease, color .15s ease;
+}
+.nav button svg{color:currentColor;opacity:0.85;}
+.nav button:hover{background:rgba(255,255,255,0.045);color:var(--text);}
+.nav button.active{
+  background:linear-gradient(90deg, rgba(63,224,203,0.14), rgba(63,224,203,0.02));
+  color:var(--cyan);
+  box-shadow:inset 0 0 0 1px rgba(63,224,203,0.22);
+}
+.nav button.active::before{
+  content:'';
+  position:absolute;left:-12px;top:50%;transform:translateY(-50%);
+  width:3px;height:16px;border-radius:3px;
+  background:var(--cyan);
+  box-shadow:0 0 10px 1px rgba(63,224,203,0.7);
+}
+
+.rail-foot{
+  margin-top:auto;
+  padding:16px 22px 2px 22px;
+  border-top:1px solid var(--line);
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.rail-status{
+  display:flex;align-items:center;gap:8px;
+  font-size:11px;color:var(--text-dim);font-family:var(--mono);
+}
+.rail-ver{font-size:10.5px;color:var(--text-faint);font-family:var(--mono);letter-spacing:0.02em;}
+
+/* ---------- Main ---------- */
+.main{flex:1;min-width:0;padding:20px 30px 60px 30px;}
+
+/* Global header strip */
+.gheader{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:16px;
+  padding:13px 18px;
+  margin-bottom:18px;
+  border-radius:var(--radius);
+  border:1px solid var(--line);
+  background:var(--panel-soft);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+}
+.gheader-left{display:flex;align-items:center;gap:12px;min-width:0;}
+.ghl-title{font-size:13.5px;font-weight:600;color:var(--text);white-space:nowrap;}
+.ghl-tag{font-size:11px;color:var(--text-dim);font-family:var(--mono);white-space:nowrap;}
+.ghl-station{
+  display:flex;align-items:center;gap:6px;
+  font-size:11.5px;color:var(--text-dim);font-family:var(--mono);
+  padding:5px 10px;border-radius:20px;border:1px solid var(--line);
+  white-space:nowrap;
+}
+.ghl-station svg{width:12px;height:12px;color:var(--cyan);}
+.gheader-right{display:flex;align-items:center;gap:10px;flex:none;}
+.gh-clock{
+  font-family:var(--mono);font-size:11.5px;color:var(--text-dim);
+  display:flex;align-items:center;gap:6px;white-space:nowrap;
+}
+.gh-clock svg{width:13px;height:13px;}
+.gh-live{
+  display:flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--green);
+  padding:6px 11px;border-radius:20px;
+  border:1px solid rgba(62,210,138,0.35);
+  background:rgba(62,210,138,0.08);
+  white-space:nowrap;
+}
+.gh-live.bad{color:var(--red);border-color:rgba(241,88,77,0.4);background:rgba(241,88,77,0.1);}
+.gh-bell{
+  position:relative;
+  width:32px;height:32px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);color:var(--text-dim);
+  cursor:default;
+}
+.gh-bell svg{width:15px;height:15px;}
+.gh-bell .dot{
+  position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;
+  background:var(--red);box-shadow:0 0 0 2px var(--panel);display:none;
+}
+.gh-bell.alert .dot{display:block;animation:pulseBad 1.4s infinite;}
+.menu-btn{
+  display:none;all:unset;cursor:pointer;
+  width:32px;height:32px;border-radius:9px;
+  align-items:center;justify-content:center;
+  border:1px solid var(--line);color:var(--text-dim);flex:none;
+}
+.menu-btn svg{width:16px;height:16px;}
+.rail-overlay{display:none;}
+
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:20px;
+  gap:16px;
+  flex-wrap:wrap;
+}
+.page-title{font-size:21px;font-weight:600;margin:0;letter-spacing:-0.01em;}
+.page-sub{color:var(--text-dim);font-size:12.5px;margin-top:4px;}
+.status-pill{
+  font-family:var(--mono);
+  font-size:11.5px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 13px;
+  border:1px solid var(--line);
+  border-radius:20px;
+  background:var(--panel);
+}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 rgba(62,210,138,0.6);animation:pulse 2s infinite;}
+.pulse.bad{background:var(--red);box-shadow:0 0 0 0 rgba(241,88,77,0.6);}
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 rgba(62,210,138,0.45);}
+  70%{box-shadow:0 0 0 8px rgba(62,210,138,0);}
+  100%{box-shadow:0 0 0 0 rgba(62,210,138,0);}
+}
+.pulse.bad{animation:pulseBad 1.4s infinite;}
+@keyframes pulseBad{
+  0%{box-shadow:0 0 0 0 rgba(241,88,77,0.5);}
+  70%{box-shadow:0 0 0 9px rgba(241,88,77,0);}
+  100%{box-shadow:0 0 0 0 rgba(241,88,77,0);}
+}
+
+.view{display:none;}
+.view.active{display:block;animation:viewIn .35s ease both;}
+@keyframes viewIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+/* ---------- Metric cards ---------- */
+.metrics{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(175px,1fr));
+  gap:12px;
+  margin-bottom:20px;
+}
+.metric{
+  background:var(--panel-soft);
+  backdrop-filter:blur(10px);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:16px 16px 14px 16px;
+  position:relative;
+  overflow:hidden;
+  transition:transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+  animation:cardIn .4s ease both;
+}
+.metric:hover{transform:translateY(-2px);border-color:var(--line-strong);box-shadow:var(--shadow-sm);}
+@keyframes cardIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+.metric-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.metric-icon{
+  width:30px;height:30px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(63,224,203,0.1);color:var(--cyan);
+  border:1px solid rgba(63,224,203,0.2);
+}
+.metric-icon svg{width:15px;height:15px;}
+.metric.warn .metric-icon{background:rgba(239,164,61,0.12);color:var(--amber);border-color:rgba(239,164,61,0.25);}
+.metric.bad .metric-icon{background:rgba(241,88,77,0.14);color:var(--red);border-color:rgba(241,88,77,0.3);}
+.metric-badge{font-size:10px;font-weight:600;font-family:var(--mono);color:var(--text-dim);padding:2.5px 8px;border-radius:20px;background:rgba(255,255,255,0.04);}
+.metric.good .metric-badge{color:var(--green);}
+.metric.warn .metric-badge{color:var(--amber);}
+.metric.bad .metric-badge{color:var(--red);background:rgba(241,88,77,0.12);}
+.metric-label{font-size:11.5px;color:var(--text-dim);margin-bottom:5px;}
+.metric-value{font-family:var(--mono);font-size:23px;font-weight:600;letter-spacing:-0.01em;}
+.metric.warn .metric-value{color:var(--amber);}
+.metric.bad .metric-value{color:var(--red);}
+.metric.good .metric-value{color:var(--text);}
+.metric-foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);}
+.metric-delta{font-size:10.5px;color:var(--text-faint);font-family:var(--mono);}
+.metric-trend{font-size:11px;font-family:var(--mono);font-weight:600;display:flex;align-items:center;gap:3px;color:var(--text-dim);}
+.metric-trend.up{color:var(--green);}
+.metric-trend.down{color:var(--cyan-2);}
+.metric-trend svg{width:11px;height:11px;}
+.metric.bad{box-shadow:0 0 0 1px rgba(241,88,77,0.35), 0 0 26px -8px rgba(241,88,77,0.4);}
+
+.grid-2{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;}
+.grid-eq{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+@media(max-width:900px){.grid-2,.grid-eq{grid-template-columns:1fr;}}
+
+.panel{
+  background:var(--panel-soft);
+  backdrop-filter:blur(10px);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:18px 18px 8px 18px;
+  animation:cardIn .4s ease both;
+}
+.panel-h{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:14px;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.panel-title{font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;}
+.panel-title svg{width:14px;height:14px;color:var(--cyan);}
+.panel-title .tag{
+  font-family:var(--mono);
+  font-size:10.5px;
+  color:var(--text-dim);
+  font-weight:400;
+  margin-left:8px;
+}
+.live-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-family:var(--mono);font-size:10px;font-weight:600;color:var(--red);
+  padding:3px 8px;border-radius:20px;background:rgba(241,88,77,0.1);border:1px solid rgba(241,88,77,0.3);
+}
+.live-badge .dot{width:5px;height:5px;border-radius:50%;background:var(--red);animation:pulseBad 1.4s infinite;}
+
+/* ---------- Anomaly banner ---------- */
+.anomaly-banner{
+  border-radius:var(--radius);
+  padding:18px 20px;
+  margin-bottom:18px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  flex-wrap:wrap;
+  border:1px solid rgba(62,210,138,0.3);
+  background:rgba(62,210,138,0.05);
+  transition:all .25s ease;
+}
+.anomaly-banner.bad{
+  border-color:rgba(241,88,77,0.4);
+  background:rgba(241,88,77,0.07);
+  box-shadow:0 0 40px -14px rgba(241,88,77,0.55);
+  animation:bannerAlert 1.8s ease-in-out infinite;
+}
+@keyframes bannerAlert{
+  0%,100%{box-shadow:0 0 40px -14px rgba(241,88,77,0.5);}
+  50%{box-shadow:0 0 55px -10px rgba(241,88,77,0.75);}
+}
+.anomaly-left{display:flex;align-items:center;gap:14px;}
+.anomaly-icon{
+  width:40px;height:40px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(62,210,138,0.15);
+  flex:none;color:var(--green);
+}
+.anomaly-icon svg{width:19px;height:19px;}
+.anomaly-banner.bad .anomaly-icon{background:rgba(241,88,77,0.18);color:var(--red);}
+.anomaly-title{font-weight:600;font-size:14.5px;}
+.anomaly-sub{font-size:12px;color:var(--text-dim);margin-top:2px;font-family:var(--mono);}
+.btn{
+  all:unset;
+  cursor:pointer;
+  font-family:var(--sans);
+  font-size:13px;
+  font-weight:600;
+  padding:10px 17px;
+  border-radius:9px;
+  background:linear-gradient(135deg, var(--cyan), var(--cyan-2));
+  color:#04211D;
+  white-space:nowrap;
+  transition:filter .15s ease, transform .1s ease;
+  box-shadow:0 8px 20px -8px rgba(63,224,203,0.5);
+}
+.btn:hover{filter:brightness(1.08);transform:translateY(-1px);}
+.btn:active{transform:translateY(0);}
+.btn.secondary{
+  background:transparent;
+  border:1px solid var(--line-strong);
+  color:var(--text);
+  box-shadow:none;
+}
+.btn.danger{background:linear-gradient(135deg, var(--red), #C43F36);color:#2A0705;box-shadow:0 8px 20px -8px rgba(241,88,77,0.5);}
+
+/* ---------- Table ---------- */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:480px;}
+th{
+  text-align:left;
+  font-size:10.5px;
+  color:var(--text-dim);
+  font-weight:600;
+  letter-spacing:0.02em;
+  padding:9px 10px;
+  border-bottom:1px solid var(--line);
+}
+td{padding:11px 10px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12px;}
+tr:last-child td{border-bottom:none;}
+tbody tr{transition:background .15s ease;}
+tbody tr:hover{background:rgba(255,255,255,0.025);}
+.badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--sans);font-size:11px;font-weight:600;
+  padding:3.5px 10px;border-radius:20px;
+}
+.badge.ok{color:var(--green);background:rgba(62,210,138,0.12);}
+.badge.warn{color:var(--amber);background:rgba(239,164,61,0.12);}
+.badge.crit{color:var(--red);background:rgba(241,88,77,0.14);}
+
+/* ---------- Sensor health grid ---------- */
+.sensor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;}
+.sensor-card{
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  padding:14px 15px;
+  background:var(--panel-2);
+  transition:transform .15s ease, border-color .15s ease;
+}
+.sensor-card:hover{transform:translateY(-2px);border-color:var(--line-strong);}
+.sensor-card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;gap:8px;}
+.sensor-name{font-size:12px;color:var(--text-dim);display:flex;align-items:center;gap:7px;}
+.sensor-name svg{width:13px;height:13px;color:var(--text-faint);}
+.sensor-val{font-family:var(--mono);font-size:18px;font-weight:600;}
+
+/* Detailed sensor cards (Sensor Details page) */
+.sensor-card.detailed{padding:17px;}
+.sensor-card .sensor-meta{margin-top:12px;padding-top:11px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px;}
+.sensor-card .sensor-meta .row{display:flex;justify-content:space-between;font-size:11.5px;}
+.sensor-card .sensor-meta .row span:first-child{color:var(--text-dim);}
+.sensor-card .sensor-meta .row span:last-child{font-family:var(--mono);color:var(--text);}
+
+/* ---------- Station map ---------- */
+.map-wrap{position:relative;}
+.map-canvas{
+  border-radius:var(--radius-sm);
+  background:radial-gradient(420px 260px at 30% 25%, rgba(63,224,203,0.05), transparent 70%), #08121A;
+  border:1px solid var(--line);
+}
+.map-legend{display:flex;gap:16px;font-size:11px;color:var(--text-dim);margin-top:12px;font-family:var(--mono);flex-wrap:wrap;}
+.legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle;}
+
+.station-detail{margin-top:2px;}
+.kv{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:12.5px;}
+.kv:last-child{border-bottom:none;}
+.kv span:first-child{color:var(--text-dim);}
+.kv span:last-child{font-family:var(--mono);font-weight:500;}
+
+/* ---------- AI explanation ---------- */
+.ai-status-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+.ai-status-chip{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 14px;border-radius:11px;
+  border:1px solid rgba(62,210,138,0.3);background:rgba(62,210,138,0.06);
+}
+.ai-status-chip svg{width:16px;height:16px;color:var(--green);}
+.ai-status-chip .lbl1{font-size:12.5px;font-weight:600;color:var(--text);}
+.ai-status-chip .lbl2{font-size:10.5px;color:var(--text-dim);font-family:var(--mono);}
+.ai-status-chip.crit{border-color:rgba(241,88,77,0.4);background:rgba(241,88,77,0.09);}
+.ai-status-chip.crit svg{color:var(--red);}
+.ai-model-chip{
+  font-family:var(--mono);font-size:11px;color:var(--text-dim);
+  padding:8px 13px;border-radius:11px;border:1px solid var(--line);
+  display:flex;align-items:center;gap:7px;
+}
+.ai-model-chip svg{width:13px;height:13px;color:var(--cyan);}
+
+.ai-box{
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  border-radius:var(--radius-sm);
+  padding:17px;
+  font-size:13px;
+  line-height:1.7;
+}
+.ai-box .lbl{
+  font-size:10.5px;color:var(--text-dim);font-weight:600;letter-spacing:0.03em;
+  margin-top:15px;margin-bottom:5px;
+  display:flex;align-items:center;gap:6px;
+}
+.ai-box .lbl svg{width:12px;height:12px;color:var(--cyan);}
+.ai-box .lbl:first-child{margin-top:0;}
+.conf-bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:8px;}
+.conf-fill{height:100%;background:linear-gradient(90deg, var(--amber), var(--red));border-radius:3px;transition:width .5s ease;}
+
+.canvas-wrap{height:220px;position:relative;}
+.canvas-wrap.tall{height:280px;}
+.chart-nowdot{position:absolute;top:2px;right:2px;font-family:var(--mono);font-size:10.5px;color:var(--text-dim);}
+
+.section-title{font-size:14px;font-weight:600;margin:26px 0 12px 0;}
+.section-title:first-child{margin-top:0;}
+
+.hint{font-size:12px;color:var(--text-dim);margin-top:10px;line-height:1.6;display:flex;align-items:flex-start;gap:7px;}
+.hint svg{width:13px;height:13px;flex:none;margin-top:1px;color:var(--text-faint);}
+
+/* ---------- Location form ---------- */
+.form-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px;}
+@media(max-width:760px){.form-grid{grid-template-columns:1fr;}}
+.field label{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-dim);margin-bottom:7px;}
+.field label svg{width:12px;height:12px;color:var(--cyan);}
+.field{position:relative;}
+.field input{
+  width:100%;
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:11px 13px;
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:13.5px;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+.field input:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(63,224,203,0.14);}
+.field input::placeholder{color:var(--text-faint);}
+.saved-msg{
+  font-size:12px;color:var(--green);font-family:var(--mono);margin-top:10px;height:16px;
+  display:flex;align-items:center;gap:6px;opacity:0;transition:opacity .25s ease;
+}
+.saved-msg.show{opacity:1;}
+.saved-msg svg{width:13px;height:13px;}
+
+/* ---------- Responsive ---------- */
+@media(max-width:760px){
+  .rail{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%);z-index:50;transition:transform .22s ease;width:250px;box-shadow:24px 0 60px -20px rgba(0,0,0,0.6);}
+  .rail.open{transform:translateX(0);}
+  .main{padding:14px 14px 60px 14px;}
+  .menu-btn{display:inline-flex;}
+  .ghl-title{display:none;}
+  .rail-overlay{display:none;position:fixed;inset:0;background:rgba(3,7,11,0.55);backdrop-filter:blur(2px);z-index:40;}
+  .rail-overlay.show{display:block;}
+  .gh-clock{display:none;}
+}
+@media(max-width:480px){
+  .metrics{grid-template-columns:repeat(2,1fr);}
+  .gh-live span.gh-live-text{display:none;}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="rail-overlay" id="railOverlay"></div>
+  <nav class="rail" id="rail">
+    <div class="brand">
+      <div class="brand-icon"><i data-lucide="radar"></i></div>
+      <div class="brand-text">
+        <div class="brand-mark">AWSense</div>
+        <div class="brand-sub">AI-Powered Weather Intelligence</div>
+      </div>
+    </div>
+    <div class="nav">
+      <button data-view="dashboard" class="active"><i data-lucide="layout-dashboard"></i>Dashboard</button>
+      <button data-view="map"><i data-lucide="map-pin"></i>Station Map</button>
+      <button data-view="anomaly"><i data-lucide="brain-circuit"></i>AI Anomaly Detection</button>
+      <button data-view="analytics"><i data-lucide="bar-chart-3"></i>Analytics</button>
+      <button data-view="sensors"><i data-lucide="cpu"></i>Sensor Details</button>
+      <button data-view="location"><i data-lucide="map"></i>Location</button>
+    </div>
+    <div class="rail-foot">
+      <div class="rail-status"><span class="pulse" id="sidebarDot"></span><span id="sidebarStatusText">All systems normal</span></div>
+      <div class="rail-ver">AWSense v0.4 · demo build · uptime <span id="uptimeText">00:00:00</span></div>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <div class="gheader">
+      <div class="gheader-left">
+        <button class="menu-btn" id="menuBtn"><i data-lucide="menu"></i></button>
+        <span class="ghl-title">AWSense</span>
+        <span class="ghl-tag">Automated Weather Station Monitoring &amp; AI Anomaly Detection</span>
+        <span class="ghl-station"><i data-lucide="map-pin"></i><span id="headerStationName">Kolkata-01</span></span>
+      </div>
+      <div class="gheader-right">
+        <span class="gh-clock"><i data-lucide="clock"></i><span id="headerUpdated">updated just now</span></span>
+        <span class="gh-live" id="headerLive"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:currentColor;"></span><span class="gh-live-text" id="headerLiveText">Live</span></span>
+        <span class="gh-bell" id="headerBell"><i data-lucide="bell"></i><span class="dot"></span></span>
+      </div>
+    </div>
+
+    <!-- ===================== DASHBOARD ===================== -->
+    <section class="view active" id="view-dashboard">
+      <div class="topbar">
+        <div>
+          <h1 class="page-title">Kolkata-01</h1>
+          <div class="page-sub">Automated weather station · live telemetry</div>
+        </div>
+        <div class="status-pill"><span class="pulse" id="statusDot"></span><span id="statusText">System Operational</span></div>
+      </div>
+
+      <div class="metrics" id="dashMetrics"></div>
+
+      <div class="grid-2">
+        <div class="panel">
+          <div class="panel-h">
+            <div class="panel-title"><i data-lucide="activity"></i>Live Sensor Data <span class="tag">TEMPERATURE · °C</span></div>
+            <span class="live-badge"><span class="dot"></span>LIVE</span>
+          </div>
+          <div class="canvas-wrap"><canvas id="liveChart"></canvas></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><div class="panel-title"><i data-lucide="heart-pulse"></i>Sensor Health</div></div>
+          <div id="dashHealth"></div>
+        </div>
+      </div>
+
+      <div class="anomaly-banner" id="dashBanner">
+        <div class="anomaly-left">
+          <div class="anomaly-icon" id="dashIcon"><i data-lucide="check"></i></div>
+          <div>
+            <div class="anomaly-title" id="dashBannerTitle">No anomalies detected</div>
+            <div class="anomaly-sub" id="dashBannerSub">All sensors reporting within expected range</div>
+          </div>
+        </div>
+        <button class="btn" id="simBtn">Simulate Sensor Anomaly</button>
+      </div>
+    </section>
+
+    <!-- ===================== STATION MAP ===================== -->
+    <section class="view" id="view-map">
+      <div class="topbar">
+        <div>
+          <h1 class="page-title">Station Map</h1>
+          <div class="page-sub">4 automated weather stations · West Bengal region</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="panel map-wrap">
+          <div class="panel-h"><div class="panel-title"><i data-lucide="radar"></i>Network Overview</div></div>
+          <svg viewBox="0 0 480 300" style="width:100%;height:280px;" id="mapSvg" class="map-canvas"></svg>
+          <div class="map-legend">
+            <span><span class="legend-dot" style="background:var(--green)"></span>Normal</span>
+            <span><span class="legend-dot" style="background:var(--amber)"></span>Warning</span>
+            <span><span class="legend-dot" style="background:var(--red)"></span>Critical</span>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><div class="panel-title" id="stationDetailTitle"><i data-lucide="server"></i>AWS-01</div></div>
+          <div class="station-detail" id="stationDetail"></div>
+        </div>
+      </div>
+      <div class="hint"><i data-lucide="info"></i>Click a station node to view its live readings, sensor health and anomaly history.</div>
+    </section>
+
+    <!-- ===================== AI ANOMALY DETECTION ===================== -->
+    <section class="view" id="view-anomaly">
+      <div class="topbar">
+        <div>
+          <h1 class="page-title">AI Anomaly Detection</h1>
+          <div class="page-sub">Isolation Forest–based outlier scoring on live sensor streams</div>
+        </div>
+        <button class="btn" id="simBtn2">Simulate Sensor Anomaly</button>
+      </div>
+
+      <div class="panel" style="margin-bottom:16px;" id="critCard">
+        <div class="ai-status-row">
+          <div class="ai-status-chip" id="aiStatusChip">
+            <i data-lucide="shield-check"></i>
+            <div>
+              <div class="lbl1" id="aiStatusLabel">AI Monitoring Active</div>
+              <div class="lbl2" id="critTitle">No Active Anomaly</div>
+            </div>
+          </div>
+          <div class="ai-model-chip"><i data-lucide="git-branch"></i>Model: Isolation Forest</div>
+        </div>
+        <div class="grid-eq" style="margin-bottom:0;">
+          <div>
+            <div class="kv"><span>Sensor</span><span id="critSensor">—</span></div>
+            <div class="kv"><span>Actual value</span><span id="critActual">—</span></div>
+            <div class="kv"><span>Expected range</span><span id="critExpected">—</span></div>
+            <div class="kv"><span>Anomaly score</span><span id="critScore">—</span></div>
+            <div class="kv"><span>Detected at</span><span id="critTime">—</span></div>
+          </div>
+          <div class="ai-box">
+            <div class="lbl"><i data-lucide="search"></i>AI ANALYSIS — why this was flagged</div>
+            <div id="aiWhy">All readings are consistent with historical patterns for this time of day. Nothing to explain.</div>
+            <div class="lbl"><i data-lucide="git-compare"></i>CROSS-SENSOR VALIDATION</div>
+            <div id="aiCross">Humidity, pressure and wind readings are all nominal.</div>
+            <div class="lbl"><i data-lucide="gauge"></i>AI CONCLUSION — confidence <span id="confPct">0%</span></div>
+            <div class="conf-bar"><div class="conf-fill" id="confFill" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-h"><div class="panel-title"><i data-lucide="history"></i>Detection History</div></div>
+        <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Sensor</th><th>Value</th><th>Score</th><th>Status</th></tr></thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ANALYTICS ===================== -->
+    <section class="view" id="view-analytics">
+      <div class="topbar">
+        <div>
+          <h1 class="page-title">Analytics</h1>
+          <div class="page-sub">24-hour trend across core parameters</div>
+        </div>
+      </div>
+      <div class="grid-eq">
+        <div class="panel"><div class="panel-h"><div class="panel-title"><i data-lucide="thermometer"></i>Temperature (°C)</div><span class="tag" style="font-family:var(--mono);font-size:10.5px;color:var(--text-dim);">24H</span></div><div class="canvas-wrap"><canvas id="chartTemp"></canvas></div></div>
+        <div class="panel"><div class="panel-h"><div class="panel-title"><i data-lucide="droplets"></i>Humidity (%)</div><span class="tag" style="font-family:var(--mono);font-size:10.5px;color:var(--text-dim);">24H</span></div><div class="canvas-wrap"><canvas id="chartHum"></canvas></div></div>
+      </div>
+      <div class="grid-eq">
+        <div class="panel"><div class="panel-h"><div class="panel-title"><i data-lucide="wind"></i>Wind Speed (km/h)</div><span class="tag" style="font-family:var(--mono);font-size:10.5px;color:var(--text-dim);">24H</span></div><div class="canvas-wrap"><canvas id="chartWind"></canvas></div></div>
+        <div class="panel"><div class="panel-h"><div class="panel-title"><i data-lucide="cloud-rain"></i>Rainfall (mm)</div><span class="tag" style="font-family:var(--mono);font-size:10.5px;color:var(--text-dim);">24H</span></div><div class="canvas-wrap"><canvas id="chartRain"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- ===================== SENSOR DETAILS ===================== -->
+    <section class="view" id="view-sensors">
+      <div class="topbar">
+        <div>
+          <h1 class="page-title">Sensor Details</h1>
+          <div class="page-sub">Per-sensor calibration and status</div>
+        </div>
+      </div>
+      <div class="sensor-grid" id="sensorDetailGrid"></div>
+    </section>
+
+    <!-- ===================== LOCATION ===================== -->
+    <section class="view" id="view-location">
+      <div class="topbar">
+        <div>
+          <h1 class="page-title">Location</h1>
+          <div class="page-sub">Set the station's country, state and city</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><div class="panel-title"><i data-lucide="map-pin"></i>Station Location</div></div>
+        <div class="form-grid">
+          <div class="field">
+            <label for="locCountry"><i data-lucide="globe"></i>Country</label>
+            <input type="text" id="locCountry" placeholder="e.g. India">
+          </div>
+          <div class="field">
+            <label for="locState"><i data-lucide="landmark"></i>State</label>
+            <input type="text" id="locState" placeholder="e.g. West Bengal">
+          </div>
+          <div class="field">
+            <label for="locCity"><i data-lucide="building-2"></i>City</label>
+            <input type="text" id="locCity" placeholder="e.g. Kolkata">
+          </div>
+        </div>
+        <button class="btn" id="saveLocBtn">Save Location</button>
+        <div class="saved-msg" id="locSavedMsg"><i data-lucide="check-circle-2"></i><span id="locSavedText"></span></div>
+      </div>
+      <div class="hint"><i data-lucide="info"></i>This updates the station name shown on the Dashboard. Values are saved in this browser.</div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* ---------------- shared state ---------------- */
+const NORMAL = {temp:31.4, hum:72, wind:18, rain:2.4, solar:812, pressure:1008};
+const RANGES = {
+  temp:{min:28,max:36,unit:'°C',label:'Temperature',icon:'thermometer'},
+  hum:{min:55,max:85,unit:'%',label:'Humidity',icon:'droplets'},
+  wind:{min:5,max:35,unit:'km/h',label:'Wind Speed',icon:'wind'},
+  rain:{min:0,max:10,unit:'mm',label:'Rainfall',icon:'cloud-rain'},
+  solar:{min:400,max:950,unit:'W/m²',label:'Solar Radiation',icon:'sun'},
+  pressure:{min:995,max:1015,unit:'hPa',label:'Pressure',icon:'gauge'}
+};
+let anomalyActive = false;
+let anomalyEvent = null;
+let history = [
+  {time:'11:03', sensor:'Temperature', value:'32.1°C', score:4, status:'ok'},
+  {time:'12:15', sensor:'Wind Speed', value:'41 km/h', score:61, status:'warn'},
+  {time:'13:47', sensor:'Humidity', value:'88%', score:57, status:'warn'},
+];
+let prevReadings = null;
+
+function fmt1(n){return Math.round(n*10)/10;}
+function jitter(base, pct){return fmt1(base + (Math.random()-0.5)*2*base*pct);}
+
+function currentReadings(){
+  const r = {
+    temp: anomalyActive ? 78.6 : jitter(NORMAL.temp,0.02),
+    hum: jitter(NORMAL.hum,0.03),
+    wind: jitter(NORMAL.wind,0.05),
+    rain: jitter(NORMAL.rain,0.1),
+    solar: jitter(NORMAL.solar,0.02),
+    pressure: jitter(NORMAL.pressure,0.002)
+  };
+  return r;
+}
+
+/* ---------------- icons ---------------- */
+function refreshIcons(){
+  if(window.lucide){ lucide.createIcons(); }
+}
+
+/* ---------------- nav ---------------- */
+document.querySelectorAll('.nav button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    closeRail();
+  });
+});
+
+/* ---------------- mobile sidebar toggle ---------------- */
+function closeRail(){
+  document.getElementById('rail').classList.remove('open');
+  document.getElementById('railOverlay').classList.remove('show');
+}
+document.getElementById('menuBtn').addEventListener('click', ()=>{
+  document.getElementById('rail').classList.toggle('open');
+  document.getElementById('railOverlay').classList.toggle('show');
+});
+document.getElementById('railOverlay').addEventListener('click', closeRail);
+
+/* ---------------- dashboard render ---------------- */
+function statusOf(key,val){
+  const r = RANGES[key];
+  if(anomalyActive && key==='temp') return 'bad';
+  if(val < r.min || val > r.max) return 'warn';
+  return 'good';
+}
+function statusLabelOf(st){
+  return st==='good' ? 'Normal' : st==='warn' ? 'Watch' : 'Critical';
+}
+function trendHtml(key, val){
+  if(!prevReadings) return `<span class="metric-trend"><i data-lucide="minus"></i>—</span>`;
+  const prev = prevReadings[key];
+  if(prev===undefined || prev===0) return `<span class="metric-trend"><i data-lucide="minus"></i>—</span>`;
+  const pct = ((val-prev)/Math.abs(prev))*100;
+  if(Math.abs(pct) < 0.05) return `<span class="metric-trend"><i data-lucide="minus"></i>0.0%</span>`;
+  const dir = pct > 0 ? 'up' : 'down';
+  const icon = pct > 0 ? 'trending-up' : 'trending-down';
+  return `<span class="metric-trend ${dir}"><i data-lucide="${icon}"></i>${Math.abs(pct).toFixed(1)}%</span>`;
+}
+
+function renderMetrics(readings){
+  const order = ['temp','hum','wind','rain','solar','pressure'];
+  const el = document.getElementById('dashMetrics');
+  el.innerHTML = order.map(k=>{
+    const r = RANGES[k];
+    const st = statusOf(k,readings[k]);
+    return `<div class="metric ${st}">
+      <div class="metric-top">
+        <div class="metric-icon"><i data-lucide="${r.icon}"></i></div>
+        <span class="metric-badge">${statusLabelOf(st)}</span>
+      </div>
+      <div class="metric-label">${r.label}</div>
+      <div class="metric-value">${fmt1(readings[k])}${r.unit}</div>
+      <div class="metric-foot">
+        <span class="metric-delta">Expected ${r.min}–${r.max}${r.unit}</span>
+        ${trendHtml(k, readings[k])}
+      </div>
+    </div>`;
+  }).join('');
+  refreshIcons();
+}
+
+function renderHealth(readings){
+  const el = document.getElementById('dashHealth');
+  const keys = ['temp','hum','wind','rain','solar'];
+  el.innerHTML = `<div class="sensor-grid">` + keys.map(k=>{
+    const r = RANGES[k];
+    const st = statusOf(k,readings[k]);
+    const badge = st==='good' ? '<span class="badge ok">Normal</span>' : st==='warn' ? '<span class="badge warn">Watch</span>' : '<span class="badge crit">Anomaly</span>';
+    return `<div class="sensor-card">
+      <div class="sensor-card-top"><span class="sensor-name"><i data-lucide="${r.icon}"></i>${r.label}</span>${badge}</div>
+      <div class="sensor-val">${fmt1(readings[k])}${r.unit}</div>
+    </div>`;
+  }).join('') + `</div>`;
+  refreshIcons();
+}
+
+function renderBanner(){
+  const banner = document.getElementById('dashBanner');
+  const icon = document.getElementById('dashIcon');
+  const title = document.getElementById('dashBannerTitle');
+  const sub = document.getElementById('dashBannerSub');
+  const headerLive = document.getElementById('headerLive');
+  const headerLiveText = document.getElementById('headerLiveText');
+  const headerBell = document.getElementById('headerBell');
+  const sidebarDot = document.getElementById('sidebarDot');
+  const sidebarStatusText = document.getElementById('sidebarStatusText');
+  if(anomalyActive){
+    banner.classList.add('bad');
+    icon.innerHTML = '<i data-lucide="alert-triangle"></i>';
+    title.textContent='Anomaly detected — Temperature sensor';
+    sub.textContent='78.6°C vs expected 28–36°C · anomaly score 96%';
+    document.getElementById('statusDot').classList.add('bad');
+    document.getElementById('statusText').textContent='Anomaly Detected';
+    headerLive.classList.add('bad');
+    headerLiveText.textContent='Anomaly';
+    headerBell.classList.add('alert');
+    sidebarDot.classList.add('bad');
+    sidebarStatusText.textContent='Critical anomaly active';
+  }else{
+    banner.classList.remove('bad');
+    icon.innerHTML = '<i data-lucide="check"></i>';
+    title.textContent='No anomalies detected';
+    sub.textContent='All sensors reporting within expected range';
+    document.getElementById('statusDot').classList.remove('bad');
+    document.getElementById('statusText').textContent='System Operational';
+    headerLive.classList.remove('bad');
+    headerLiveText.textContent='Live';
+    headerBell.classList.remove('alert');
+    sidebarDot.classList.remove('bad');
+    sidebarStatusText.textContent='All systems normal';
+  }
+  refreshIcons();
+}
+
+/* ---------------- live chart ---------------- */
+let liveData = Array.from({length:24},()=>jitter(NORMAL.temp,0.02));
+let liveChart;
+function initLiveChart(){
+  const ctx = document.getElementById('liveChart');
+  const gradient = ctx.getContext('2d').createLinearGradient(0,0,0,220);
+  gradient.addColorStop(0,'rgba(63,224,203,0.28)');
+  gradient.addColorStop(1,'rgba(63,224,203,0.0)');
+  liveChart = new Chart(ctx,{
+    type:'line',
+    data:{labels:liveData.map((_,i)=>i), datasets:[{data:liveData, borderColor:'#3FE0CB', backgroundColor:gradient, fill:true, tension:0.35, pointRadius:0, borderWidth:2.4}]},
+    options:baseChartOpts(20,90)
+  });
+}
+function baseChartOpts(min,max){
+  return {
+    responsive:true, maintainAspectRatio:false,
+    animation:{duration:250},
+    plugins:{legend:{display:false},
+      tooltip:{
+        backgroundColor:'#111D27', borderColor:'#22303C', borderWidth:1,
+        titleColor:'#7E97A8', bodyColor:'#E7F0F6', bodyFont:{family:'IBM Plex Mono'},
+        padding:8, displayColors:false
+      }
+    },
+    scales:{
+      x:{display:false},
+      y:{min:min,max:max, grid:{color:'#141F29'}, ticks:{color:'#7E97A8', font:{family:'IBM Plex Mono',size:10}}}
+    }
+  };
+}
+function pushLive(val){
+  liveData.push(val); liveData.shift();
+  liveChart.data.labels = liveData.map((_,i)=>i);
+  liveChart.data.datasets[0].data = liveData;
+  const color = anomalyActive ? '#F1584D' : '#3FE0CB';
+  liveChart.data.datasets[0].borderColor = color;
+  liveChart.update('none');
+}
+
+/* ---------------- anomaly view ---------------- */
+function renderAnomalyView(){
+  const chip = document.getElementById('aiStatusChip');
+  const chipLabel = document.getElementById('aiStatusLabel');
+  if(anomalyActive){
+    chip.classList.add('crit');
+    chipLabel.textContent = 'Critical Anomaly';
+    document.getElementById('critTitle').textContent = 'Active — flagged just now';
+    document.getElementById('critSensor').textContent = 'Temperature';
+    document.getElementById('critActual').textContent = '78.6°C';
+    document.getElementById('critExpected').textContent = '28–36°C';
+    document.getElementById('critScore').textContent = '96%';
+    document.getElementById('critTime').textContent = anomalyEvent.time;
+    document.getElementById('aiWhy').textContent = "Temperature jumped from 32.1°C to 78.6°C in a single reading interval — a change far outside any pattern seen in this station's history for this hour.";
+    document.getElementById('aiCross').textContent = 'Humidity, wind and solar radiation on this and neighbouring stations remain normal, so this is not a real weather event — it points to a sensor fault or calibration error rather than actual environmental change.';
+    document.getElementById('confPct').textContent = '96%';
+    document.getElementById('confFill').style.width = '96%';
+  }else{
+    chip.classList.remove('crit');
+    chipLabel.textContent = 'AI Monitoring Active';
+    document.getElementById('critTitle').textContent = 'No Active Anomaly';
+    document.getElementById('critSensor').textContent = '—';
+    document.getElementById('critActual').textContent = '—';
+    document.getElementById('critExpected').textContent = '—';
+    document.getElementById('critScore').textContent = '—';
+    document.getElementById('critTime').textContent = '—';
+    document.getElementById('aiWhy').textContent = 'All readings are consistent with historical patterns for this time of day. Nothing to explain.';
+    document.getElementById('aiCross').textContent = 'Humidity, pressure and wind readings are all nominal.';
+    document.getElementById('confPct').textContent = '0%';
+    document.getElementById('confFill').style.width = '0%';
+  }
+  renderHistory();
+  refreshIcons();
+}
+function renderHistory(){
+  const body = document.getElementById('historyBody');
+  const rows = [...history].reverse();
+  body.innerHTML = rows.map(h=>{
+    const badge = h.status==='ok' ? '<span class="badge ok">Normal</span>' : h.status==='warn' ? '<span class="badge warn">Watch</span>' : '<span class="badge crit">Anomaly</span>';
+    return `<tr><td>${h.time}</td><td>${h.sensor}</td><td>${h.value}</td><td>${h.score}%</td><td>${badge}</td></tr>`;
+  }).join('');
+}
+
+/* ---------------- simulate button ---------------- */
+function triggerAnomaly(){
+  if(anomalyActive) return;
+  anomalyActive = true;
+  const now = new Date();
+  const timeStr = now.toTimeString().slice(0,8);
+  anomalyEvent = {time:timeStr};
+  history.push({time:timeStr.slice(0,5), sensor:'Temperature', value:'78.6°C', score:96, status:'crit'});
+  renderBanner();
+  renderAnomalyView();
+  document.getElementById('mapStations')?.forEach?.(()=>{});
+  drawMap();
+  setTimeout(()=>{
+    anomalyActive = false;
+    renderBanner();
+    renderAnomalyView();
+    drawMap();
+  }, 9000);
+}
+document.getElementById('simBtn').addEventListener('click', triggerAnomaly);
+document.getElementById('simBtn2').addEventListener('click', triggerAnomaly);
+
+/* ---------------- location ---------------- */
+function loadLocation(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('awsenseLocation') || 'null');
+    if(saved){
+      document.getElementById('locCountry').value = saved.country || '';
+      document.getElementById('locState').value = saved.state || '';
+      document.getElementById('locCity').value = saved.city || '';
+      applyLocation(saved);
+    }
+  }catch(e){}
+}
+function applyLocation(loc){
+  const title = document.querySelector('#view-dashboard .page-title');
+  const sub = document.querySelector('#view-map .page-sub');
+  const headerStationName = document.getElementById('headerStationName');
+  if(loc.city){ title.textContent = loc.city; if(headerStationName) headerStationName.textContent = loc.city; }
+  const parts = [loc.city, loc.state, loc.country].filter(Boolean);
+  if(sub && parts.length) sub.textContent = parts.length+' automated weather stations · '+parts.join(', ');
+}
+document.getElementById('saveLocBtn').addEventListener('click', ()=>{
+  const loc = {
+    country: document.getElementById('locCountry').value.trim(),
+    state: document.getElementById('locState').value.trim(),
+    city: document.getElementById('locCity').value.trim()
+  };
+  localStorage.setItem('awsenseLocation', JSON.stringify(loc));
+  applyLocation(loc);
+  const msg = document.getElementById('locSavedMsg');
+  const msgText = document.getElementById('locSavedText');
+  msgText.textContent = 'Saved.';
+  msg.classList.add('show');
+  setTimeout(()=>{msg.classList.remove('show'); msgText.textContent='';}, 2000);
+});
+loadLocation();
+
+/* ---------------- station map ---------------- */
+const stations = [
+  {id:'AWS-01', x:110, y:80, status:'good', name:'AWS-01 · Salt Lake', temp:31.2, hum:70, wind:16, pressure:1008},
+  {id:'AWS-02', x:90, y:190, status:'good', name:'AWS-02 · Howrah', temp:31.8, hum:74, wind:14, pressure:1009},
+  {id:'AWS-03', x:260, y:150, status:'dynamic', name:'AWS-03 · Kolkata-01', temp:31.4, hum:72, wind:18, pressure:1008},
+  {id:'AWS-04', x:380, y:220, status:'warn', name:'AWS-04 · Diamond Harbour', temp:33.5, hum:88, wind:41, pressure:1004},
+];
+let selectedStation = stations[2];
+
+function statusColor(s){
+  if(s==='dynamic') return anomalyActive ? '#F1584D' : '#3ED28A';
+  if(s==='warn') return '#EFA43D';
+  if(s==='crit') return '#F1584D';
+  return '#3ED28A';
+}
+
+function drawMap(){
+  const svg = document.getElementById('mapSvg');
+  const links = [[0,2],[1,2],[2,3]];
+  let defs = `<defs>
+    <filter id="nodeGlow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="4.2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>`;
+  let lines = links.map(([a,b])=>`<line x1="${stations[a].x}" y1="${stations[a].y}" x2="${stations[b].x}" y2="${stations[b].y}" stroke="#22303C" stroke-width="1.5" stroke-dasharray="4 4"/>`).join('');
+  let nodes = stations.map((s,i)=>{
+    const c = statusColor(s.status);
+    const isSelected = s.id===selectedStation.id;
+    return `<g class="station-node" data-i="${i}" style="cursor:pointer;" filter="url(#nodeGlow)">
+      <circle cx="${s.x}" cy="${s.y}" r="${isSelected?16:11}" fill="${c}" fill-opacity="0.16" stroke="${c}" stroke-width="${isSelected?2:1.4}"/>
+      <circle cx="${s.x}" cy="${s.y}" r="4.5" fill="${c}"/>
+      <text x="${s.x}" y="${s.y+30}" fill="#8AA1B1" font-family="IBM Plex Mono" font-size="11" text-anchor="middle">${s.id}</text>
+    </g>`;
+  }).join('');
+  svg.innerHTML = defs + lines + nodes;
+  svg.querySelectorAll('.station-node').forEach(n=>{
+    n.addEventListener('click',()=>{
+      selectedStation = stations[+n.dataset.i];
+      renderStationDetail();
+      drawMap();
+    });
+  });
+}
+
+function renderStationDetail(){
+  const s = selectedStation;
+  document.getElementById('stationDetailTitle').innerHTML = `<i data-lucide="server"></i>${s.name}`;
+  const r = s.id==='AWS-03' ? currentReadings() : s;
+  const statusLabel = s.status==='dynamic' ? (anomalyActive?'Critical':'Normal') : (s.status==='warn'?'Warning':'Normal');
+  document.getElementById('stationDetail').innerHTML = `
+    <div class="kv"><span>Status</span><span>${statusLabel}</span></div>
+    <div class="kv"><span>Temperature</span><span>${fmt1(r.temp)}°C</span></div>
+    <div class="kv"><span>Humidity</span><span>${fmt1(r.hum)}%</span></div>
+    <div class="kv"><span>Wind speed</span><span>${fmt1(r.wind)} km/h</span></div>
+    <div class="kv"><span>Pressure</span><span>${fmt1(r.pressure)} hPa</span></div>
+    <div class="kv"><span>Anomaly history</span><span>${s.id==='AWS-03' ? history.length+' events' : '0 events'}</span></div>
+  `;
+  refreshIcons();
+}
+
+/* ---------------- analytics charts ---------------- */
+function hourLabels(){return Array.from({length:24},(_,i)=>i+':00');}
+function series(base,pct,n=24){return Array.from({length:n},()=>jitter(base,pct));}
+function makeLine(id,data,color,min,max){
+  const el = document.getElementById(id);
+  const gradient = el.getContext('2d').createLinearGradient(0,0,0,220);
+  gradient.addColorStop(0,color+'33');
+  gradient.addColorStop(1,color+'00');
+  new Chart(el,{
+    type:'line',
+    data:{labels:hourLabels(), datasets:[{data, borderColor:color, backgroundColor:gradient, fill:true, tension:0.35, pointRadius:0, borderWidth:2.2}]},
+    options:baseChartOpts(min,max)
+  });
+}
+
+/* ---------------- sensor details page ---------------- */
+function renderSensorDetails(){
+  const el = document.getElementById('sensorDetailGrid');
+  const keys = Object.keys(RANGES);
+  el.innerHTML = keys.map(k=>{
+    const r = RANGES[k];
+    return `<div class="sensor-card detailed">
+      <div class="sensor-card-top"><span class="sensor-name"><i data-lucide="${r.icon}"></i>${r.label}</span><span class="badge ok">Calibrated</span></div>
+      <div class="sensor-val">${fmt1(NORMAL[k])}${r.unit}</div>
+      <div class="sensor-meta">
+        <div class="row"><span>Expected range</span><span>${r.min}–${r.max}${r.unit}</span></div>
+        <div class="row"><span>Calibration status</span><span>OK</span></div>
+        <div class="row"><span>Last calibration</span><span>12 days ago</span></div>
+      </div>
+    </div>`;
+  }).join('');
+  refreshIcons();
+}
+
+/* ---------------- header clock / uptime ---------------- */
+const bootTime = Date.now();
+function pad2(n){return String(n).padStart(2,'0');}
+function updateHeaderClock(){
+  const el = document.getElementById('headerUpdated');
+  if(el) el.textContent = 'updated just now';
+  const up = document.getElementById('uptimeText');
+  if(up){
+    const s = Math.floor((Date.now()-bootTime)/1000);
+    const hh = pad2(Math.floor(s/3600));
+    const mm = pad2(Math.floor((s%3600)/60));
+    const ss = pad2(s%60);
+    up.textContent = `${hh}:${mm}:${ss}`;
+  }
+}
+
+/* ---------------- boot ---------------- */
+function tick(){
+  const readings = currentReadings();
+  renderMetrics(readings);
+  renderHealth(readings);
+  pushLive(readings.temp);
+  if(document.getElementById('view-map').classList.contains('active') && selectedStation.id==='AWS-03'){
+    renderStationDetail();
+  }
+  prevReadings = readings;
+  updateHeaderClock();
+}
+
+refreshIcons();
+initLiveChart();
+renderBanner();
+renderAnomalyView();
+drawMap();
+renderStationDetail();
+renderSensorDetails();
+makeLine('chartTemp', series(NORMAL.temp,0.05), '#3FE0CB', 25, 40);
+makeLine('chartHum', series(NORMAL.hum,0.08), '#3FE0CB', 50, 95);
+makeLine('chartWind', series(NORMAL.wind,0.2), '#3FE0CB', 0, 45);
+makeLine('chartRain', series(NORMAL.rain,0.6), '#3FE0CB', 0, 12);
+setInterval(tick, 2000);
+setInterval(updateHeaderClock, 1000);
+tick();
+refreshIcons();
+</script>
+</body>
+</html>
